@@ -125,9 +125,8 @@ function pomo_status {
 }
 
 function pomo_notify {
-    # Send a message using notify-send (ie libnotify and notification-daemon)
-    # at the end of each Pomodoro block.  This requires a Pomodoro session to
-    # have already been started...
+    # Send a message using terminal-notifier at the end of each Pomodoro block.
+    # This requires a Pomodoro session to # have already been started...
     if [[ -e $POMO ]]; then
         break_end_msg='End of a break period.  Time for work!'
         work_end_msg='End of a work period.  Time for a break!'
@@ -148,10 +147,15 @@ function pomo_notify {
                 [[ $stat -ge $(( running + left )) ]] && break
             done
             if [[ $(( stat - running - left )) -le 1 ]]; then
+                if ! [ -x "$(command -v terminal-notifier)" ]; then
+                  echo 'Needs terminal-notifier to run!' >&2
+                  exit 1
+                fi
+
                 if $work; then
-                    notify-send Pomodoro "$work_end_msg"
+                  terminal-notifier -title Pomodoro -message "$work_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
                 else
-                    notify-send Pomodoro "$break_end_msg"
+                  terminal-notifier -title Pomodoro -message "$break_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
                 fi
             fi
             # sleep for a second so that the timestamp of POMO is not the
@@ -190,7 +194,7 @@ clock
     paused.
 notify
     Raise a notification at the end of every Pomodoro work and break block
-    (requires notify-send).
+    (requires terminal-notifier).
 status
     Continuously print the current status of the Pomodoro timer once a second,
     the the same format as the clock action.

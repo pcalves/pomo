@@ -1,6 +1,8 @@
 pomo.sh
 =======
 
+This is a tiny fork of pomo.sh, altered to use terminal-notifier for notification on macOS.
+
 pomo.sh is a simple `Pomodoro
 <http://en.wikipedia.org/wiki/Pomodoro_Technique>`_ timer written in bash with
 minimal dependencies.  It is designed to be easy to use from the command-line
@@ -69,7 +71,7 @@ To see how much time is left in the current Pomodoro block::
 $ pomo.sh clock
 
 pomo.sh can also send notifications about the end of work and break blocks
-using notification-daemon and send-notify.  This involves pomo.sh sleeping until the end of a block and so is best run in the background::
+using terminal-notifier.  This involves pomo.sh sleeping until the end of a block and so is best run in the background::
 
 $ pomo.sh notify &
 
@@ -90,7 +92,7 @@ using ``%pomo%``.
 Dependencies
 ------------
 
-bash, GNU coreutils (cat, cut, date, printf, sleep, stat, touch, wc).  The notify action also requires  send-notify (supplied by libnotify) and an implementation of notification-daemon.
+bash, GNU coreutils (cat, cut, date, printf, sleep, stat, touch, wc).  The notify action also requires `terminal-notifier <https://github.com/julienXX/terminal-notifier>`_.
 
 License
 -------

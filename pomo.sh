@@ -39,137 +39,137 @@
 #--- Pomodoro functions ---
 
 function pomo_start {
-    # Start new pomo block (work+break cycle).
-    test -e $(dirname $POMO) || mkdir $(dirname $POMO)
-    touch $POMO
+  # Start new pomo block (work+break cycle).
+  test -e $(dirname $POMO) || mkdir $(dirname $POMO)
+  touch $POMO
 }
 
 function pomo_stop {
-    # Stop pomo cycles.
-    rm -f $POMO
+  # Stop pomo cycles.
+  rm -f $POMO
 }
 
 function pomo_ispaused {
-    # Return 0 if paused, 1 otherwise.
-    # pomo.sh is paused if the POMO file contains any information.
-    [[ $(wc -l $POMO | cut -d" " -f1) -gt 0 ]]
-    return $?
+  # Return 0 if paused, 1 otherwise.
+  # pomo.sh is paused if the POMO file contains any information.
+  [[ $(/usr/local/opt/coreutils/libexec/gnubin/wc -l $POMO | cut -d" " -f1) -gt 0 ]]
+  return $?
 }
 
 function pomo_pause {
-    # Toggle the pause status on the POMO file.
-    if pomo_ispaused; then
-        # Restart a paused pomo block by updating the time stamp of the POMO
-        # file.
-        running=$(pomo_stat)
-        mtime=$(date --date "@$(( $(date +%s) - running))" +%m%d%H%M.%S)
-        rm $POMO # erase saved time stamp.
-        touch -m -t $mtime $POMO
-    else
-        # Pause a pomo block.
-        running=$(pomo_stat)
-        echo $running > $POMO
-    fi
+  # Toggle the pause status on the POMO file.
+  if pomo_ispaused; then
+    # Restart a paused pomo block by updating the time stamp of the POMO
+    # file.
+    running=$(pomo_stat)
+    mtime=$(/usr/local/opt/coreutils/libexec/gnubin/date --date "@$(( $(date +%s) - running))" +%m%d%H%M.%S)
+    rm $POMO # erase saved time stamp.
+    touch -m -t $mtime $POMO
+  else
+    # Pause a pomo block.
+    running=$(pomo_stat)
+    echo $running > $POMO
+  fi
 }
 
 function pomo_update {
-    # Update the time stamp on POMO a new cycle has started.
-    running=$(pomo_stat)
-    block_time=$(( (WORK_TIME+BREAK_TIME)*60 ))
-    if [[ $running -ge $block_time ]]; then
-        ago=$(( running % block_time )) # We should've started the new cycle a while ago?
-        mtime=$(date --date "@$(( $(date +%s) - ago))" +%m%d%H%M.%S)
-        touch -m -t $mtime $POMO
-    fi
+  # Update the time stamp on POMO a new cycle has started.
+  running=$(pomo_stat)
+  block_time=$(( (WORK_TIME+BREAK_TIME)*60 ))
+  if [[ $running -ge $block_time ]]; then
+    ago=$(( running % block_time )) # We should've started the new cycle a while ago?
+    mtime=$(/usr/local/opt/coreutils/libexec/gnubin/date --date "@$(( $(date +%s) - ago))" +%m%d%H%M.%S)
+    touch -m -t $mtime $POMO
+  fi
 }
 
 function pomo_stat {
-    # Return number of seconds since start of pomo block (work+break cycle).
-    [[ -e $POMO ]] && running=$(cat $POMO) || running=0
-    if [[ -z $running ]]; then
-        pomo_start=$(stat -c +%Y $POMO)
-        now=$(date +%s)
-        running=$((now-pomo_start))
-    fi
-    echo $running
+  # Return number of seconds since start of pomo block (work+break cycle).
+  [[ -e $POMO ]] && running=$(cat $POMO) || running=0
+  if [[ -z $running ]]; then
+    pomo_start=$(/usr/local/opt/coreutils/libexec/gnubin/stat -c +%Y $POMO)
+    now=$(/usr/local/opt/coreutils/libexec/gnubin/date +%s)
+    running=$((now-pomo_start))
+  fi
+  echo $running
 }
 
 function pomo_clock {
-    # Print out how much time is remaining in block.
-    # WMM:SS indicates MM:SS left in the work block.
-    # BMM:SS indicates MM:SS left in the break block.
-    if [[ -e $POMO ]]; then
-        pomo_update
-        running=$(pomo_stat)
-        left=$(( WORK_TIME*60 - running ))
-        if [[ $left -lt 0 ]]; then
-            left=$(( left + BREAK_TIME*60 ))
-            prefix=B
-        else
-            prefix=W
-        fi
-        pomo_ispaused && prefix=P$prefix
-        min=$(( left / 60 ))
-        sec=$(( left - 60*min ))
-        printf "%2s%02d:%02d" $prefix $min $sec
+  # Print out how much time is remaining in block.
+  # WMM:SS indicates MM:SS left in the work block.
+  # BMM:SS indicates MM:SS left in the break block.
+  if [[ -e $POMO ]]; then
+    pomo_update
+    running=$(pomo_stat)
+    left=$(( WORK_TIME*60 - running ))
+    if [[ $left -lt 0 ]]; then
+      left=$(( left + BREAK_TIME*60 ))
+      prefix=B
     else
-        printf "  --:--"
+      prefix=W
     fi
+    pomo_ispaused && prefix=P$prefix
+    min=$(( left / 60 ))
+    sec=$(( left - 60*min ))
+    printf "%2s%02d:%02d" $prefix $min $sec
+  else
+    printf "  --:--"
+  fi
 }
 
 function pomo_status {
-    while true; do
-        echo $(pomo_clock)
-        sleep 1
-    done
+  while true; do
+    echo $(pomo_clock)
+    sleep 1
+  done
 }
 
 function pomo_notify {
-    # Send a message using terminal-notifier at the end of each Pomodoro block.
-    # This requires a Pomodoro session to # have already been started...
-    if [[ -e $POMO ]]; then
-        break_end_msg='End of a break period.  Time for work!'
-        work_end_msg='End of a work period.  Time for a break!'
-        while true; do
-            pomo_update
-            while true; do
-                running=$(pomo_stat)
-                left=$(( WORK_TIME*60 - running ))
-                work=true
-                if [[ $left -lt 0 ]]; then
-                    left=$(( left + BREAK_TIME*60 ))
-                    work=false
-                fi
-                sleep $left
-                # Check that the block is actually done (i.e. pomo was not
-                # paused whilst we were sleeping).
-                stat=$(pomo_stat)
-                [[ $stat -ge $(( running + left )) ]] && break
-            done
-            if [[ $(( stat - running - left )) -le 1 ]]; then
-                if ! [ -x "$(command -v terminal-notifier)" ]; then
-                  echo 'Needs terminal-notifier to run!' >&2
-                  exit 1
-                fi
+  # Send a message using terminal-notifier at the end of each Pomodoro block.
+  # This requires a Pomodoro session to # have already been started...
+  if [[ -e $POMO ]]; then
+    break_end_msg='End of a break period.  Time for work!'
+    work_end_msg='End of a work period.  Time for a break!'
+    while true; do
+      pomo_update
+      while true; do
+        running=$(pomo_stat)
+        left=$(( WORK_TIME*60 - running ))
+        work=true
+        if [[ $left -lt 0 ]]; then
+          left=$(( left + BREAK_TIME*60 ))
+          work=false
+        fi
+        sleep $left
+        # Check that the block is actually done (i.e. pomo was not
+        # paused whilst we were sleeping).
+        stat=$(pomo_stat)
+        [[ $stat -ge $(( running + left )) ]] && break
+      done
+      if [[ $(( stat - running - left )) -le 1 ]]; then
+        if ! [ -x "$(command -v terminal-notifier)" ]; then
+          echo 'Needs terminal-notifier to run!' >&2
+          exit 1
+        fi
 
-                if $work; then
-                  terminal-notifier -title Pomodoro -message "$work_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
-                else
-                  terminal-notifier -title Pomodoro -message "$break_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
-                fi
-            fi
-            # sleep for a second so that the timestamp of POMO is not the
-            # current time (i.e. allow next unit to start).
-            sleep 1
-        done
-    fi
+        if $work; then
+          terminal-notifier -title Pomodoro -message "$work_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
+        else
+          terminal-notifier -title Pomodoro -message "$break_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
+        fi
+      fi
+      # sleep for a second so that the timestamp of POMO is not the
+      # current time (i.e. allow next unit to start).
+      sleep 1
+    done
+  fi
 }
 
 #--- Help ---
 
 function pomo_usage {
-    # Print out usage message.
-    cat <<END
+  # Print out usage message.
+  cat <<END
 pomo.sh [-h] [start | stop | pause | clock | status | notify | usage]
 
 pomo.sh - a simple Pomodoro timer.
@@ -221,25 +221,25 @@ END
 
 action=
 while getopts h arg; do
-    case $arg in
-        h|?)
-            action=usage
-            ;;
-    esac
+  case $arg in
+    h|?)
+      action=usage
+      ;;
+  esac
 done
 shift $(($OPTIND-1))
 
 actions="start stop pause clock usage notify status"
 for act in $actions; do
-    if [[ $act == $1 ]]; then
-        action=$act
-        break
-    fi
+  if [[ $act == $1 ]]; then
+    action=$act
+    break
+  fi
 done
 
 if [[ -n $action ]]; then
-    pomo_$action
+  pomo_$action
 else
-    [[ $# -gt 0 ]] && echo "Unknown option/action: $1." || echo "Action not supplied."
-    pomo_usage
+  [[ $# -gt 0 ]] && echo "Unknown option/action: $1." || echo "Action not supplied."
+  pomo_usage
 fi

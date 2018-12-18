@@ -128,8 +128,8 @@ function pomo_notify {
   # Send a message using terminal-notifier at the end of each Pomodoro block.
   # This requires a Pomodoro session to # have already been started...
   if [[ -e $POMO ]]; then
-    break_end_msg='End of a break period.  Time for work!'
-    work_end_msg='End of a work period.  Time for a break!'
+    break_end_msg='End of a break period. Time for work!'
+    work_end_msg='End of a work period. Time for a break!'
     while true; do
       pomo_update
       while true; do
@@ -144,18 +144,24 @@ function pomo_notify {
         # Check that the block is actually done (i.e. pomo was not
         # paused whilst we were sleeping).
         stat=$(pomo_stat)
-        [[ $stat -ge $(( running + left )) ]] && break
+        echo $stat $running $left
+        if [[ $work == true ]]; then
+          [[ $stat -ge $(( running + left )) ]] && break
+        else
+          [[ $stat -le $(( running - left )) ]] && break
+        fi
       done
+
       if [[ $(( stat - running - left )) -le 1 ]]; then
         if ! [ -x "$(command -v terminal-notifier)" ]; then
           echo 'Needs terminal-notifier to run!' >&2
           exit 1
         fi
 
-        if $work; then
-          terminal-notifier -title Pomodoro -message "$work_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
+        if [[ $work == true ]]; then
+          terminal-notifier -title Pomodoro -message "$work_end_msg" -appIcon ~/.scripts/pomo/pomo.png -ignoreDnD
         else
-          terminal-notifier -title Pomodoro -message "$break_end_msg" -appIcon ~/scripts/pomo/pomo.png -ignoreDnD
+          terminal-notifier -title Pomodoro -message "$break_end_msg" -appIcon ~/.scripts/pomo/pomo.png -ignoreDnD
         fi
       fi
       # sleep for a second so that the timestamp of POMO is not the
